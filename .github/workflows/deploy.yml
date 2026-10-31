@@ -48,31 +48,6 @@ jobs:
           echo "Publicando $REF_PUBLICADA (commit $COMMIT) — evento: $EVENTO"
           cat build-info.json
 
-      - name: Configurar Pages
-        uses: actions/configure-pages@v5
-
-      - name: Empacotar o site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - name: Publicar
-        id: publicacao
-        uses: actions/deploy-pages@v4
-
-              - name: Carimbar a versão publicada (build-info.json)
-        env:
-          REF_PUBLICADA: ${{ inputs.versao || github.ref_name }}
-          EVENTO: ${{ github.event_name }}
-          EXECUCAO: ${{ github.run_number }}
-        run: |
-          COMMIT=$(git rev-parse --short HEAD)
-          DATA=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          printf '{"ref":"%s","commit":"%s","dataDeploy":"%s","evento":"%s","execucao":"%s"}\n' \
-            "$REF_PUBLICADA" "$COMMIT" "$DATA" "$EVENTO" "$EXECUCAO" > build-info.json
-          echo "Publicando $REF_PUBLICADA (commit $COMMIT) — evento: $EVENTO"
-          cat build-info.json
-
       - name: Validar integridade dos assets (pre-deploy test)
         run: |
           node -e '
@@ -109,3 +84,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
+      - name: Publicar
+        id: publicacao
+        uses: actions/deploy-pages@v4
