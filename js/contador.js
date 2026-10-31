@@ -7,6 +7,7 @@
  */
 
 const historicoContador = [];
+const MAX_HISTORICO = 30;
 
 function formatarTempo(ms) {
   const total = Math.floor(ms / 1000);
@@ -21,7 +22,6 @@ function formatarTempo(ms) {
 function iniciarContador(campanha) {
   const banner = document.getElementById('banner-bf');
   const alvo = banner.querySelector('.bf-tempo');
-  const vitrine = document.getElementById('vitrine');
   const fim = new Date(campanha.fim).getTime();
   banner.hidden = false;
 
@@ -29,19 +29,21 @@ function iniciarContador(campanha) {
 
   function tick() {
     const restante = Math.max(0, fim - Date.now());
+    if (historicoContador.length >= MAX_HISTORICO) {
+      historicoContador.shift();
+    }
     historicoContador.push({
       instante: Date.now(),
-      restante: restante,
-      jogos: JOGOS.map((jogo) => ({ ...jogo })),
-      vitrine: vitrine.cloneNode(true)
+      restante: restante
     });
     Observabilidade.contar('contador_ticks');
     alvo.innerHTML = formatarTempo(restante);
   }
 
   tick();
+  const intervaloMs = (campanha.intervaloContadorSegundos || 1) * 1000;
   Observabilidade.info('CONTADOR_INICIADO', 'Contador da Black Friday ativo', {
-    fim: campanha.fim, intervalo: campanha.intervaloContadorSegundos
+    fim: campanha.fim, intervaloMs: intervaloMs
   });
-  return setInterval(tick, campanha.intervaloContadorSegundos);
+  return setInterval(tick, intervaloMs);
 }
