@@ -59,3 +59,53 @@ jobs:
       - name: Publicar
         id: publicacao
         uses: actions/deploy-pages@v4
+
+              - name: Carimbar a versão publicada (build-info.json)
+        env:
+          REF_PUBLICADA: ${{ inputs.versao || github.ref_name }}
+          EVENTO: ${{ github.event_name }}
+          EXECUCAO: ${{ github.run_number }}
+        run: |
+          COMMIT=$(git rev-parse --short HEAD)
+          DATA=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          printf '{"ref":"%s","commit":"%s","dataDeploy":"%s","evento":"%s","execucao":"%s"}\n' \
+            "$REF_PUBLICADA" "$COMMIT" "$DATA" "$EVENTO" "$EXECUCAO" > build-info.json
+          echo "Publicando $REF_PUBLICADA (commit $COMMIT) — evento: $EVENTO"
+          cat build-info.json
+
+      - name: Validar integridade dos assets (pre-deploy test)
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+
+            console.log("==> Iniciando validação pré-deploy da release...");
+            const config = JSON.parse(fs.readFileSync("config/app-config.json", "utf8"));
+            const catalogo = JSON.parse(fs.readFileSync(config.catalogoUrl, "utf8"));
+
+            const pastaCapas = config.pastaCapas;
+            console.log("Pasta de capas configurada:", pastaCapas);
+
+            let erros = 0;
+            for (const jogo of catalogo.jogos) {
+              const caminhoCapa = path.join(pastaCapas, jogo.capa);
+              if (!fs.existsSync(caminhoCapa)) {
+                console.error(`[ERRO] Capa ausente para "${jogo.titulo}": ${caminhoCapa}`);
+                erros++;
+              }
+            }
+
+            if (erros > 0) {
+              console.error(`\n[FALHA CRÍTICA] Encontrados ${erros} erro(s). Deploy BLOQUEADO para proteger a produção!`);
+              process.exit(1);
+            }
+            console.log(`[SUCESSO] Todas as ${catalogo.jogos.length} capas foram verificadas e existem.`);
+          '
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empacotar o site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
